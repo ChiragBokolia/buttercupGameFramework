@@ -28,6 +28,7 @@ class Basic(Buttercup):
 	def ON_UPDATE(self):
 		if kEvent.press == kEvent.keys['ctrl+q']:
 			self.game_state = False
+		draw_string(10, 11, repr(kEvent.press))
 
 Basic()
 ```

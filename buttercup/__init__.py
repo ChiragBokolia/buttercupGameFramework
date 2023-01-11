@@ -2,6 +2,11 @@ from abc import ABC, abstractmethod
 from threading import Thread
 import platform, sys, os, time
 
+keys = {
+	"ctrl+q": b"\x11",
+	"escape": b"\x1b"
+}
+
 pixel_type = {
 	"solid":"\u2588",
 	"three_quarters":"\u2593",
@@ -18,7 +23,7 @@ fg_colo = {
 	"magenta":"\x1b[35m",
 	"cyan":"\x1b[36m",
 	"white":"\x1b[37m",
-# bold/bright color
+	# bold/bright color
 	"b_black":"\x1b[90m",
 	"b_red":"\x1b[91m",
 	"b_green":"\x1b[92m",
@@ -38,7 +43,7 @@ bg_colo = {
 	"magenta":"\x1b[45m",
 	"cyan":"\x1b[46m",
 	"white":"\x1b[47m",
-# bold/bright color
+	# bold/bright color
 	"b_black":"\x1b[100m",
 	"b_red":"\x1b[101m",
 	"b_green":"\x1b[102m",
@@ -49,32 +54,30 @@ bg_colo = {
 	"b_white":"\x1b[107m"
 }
 
-keys = {
-	"ctrl+q": b"\x11",
-}
-
 class Screen:
 	width = 80
 	height = 24
 
+	foreground = ""
+	background = ""
+
 	bufChar = [" " for i in range(width * height)]
-	bufColoF = [" " for i in range(width * height)]
-	bufColoB = [" " for i in range(width * height)]
 
 	def __init__(self):
 		self.buf = [i for i in range(Screen.width*Screen.height)]
+		# set terminal window width and height
 		sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=Screen.height, cols=Screen.width))
-		# sys.stdout.write("\x1b[22m\x1b[24m\x1b[27m")
 
 	def render(self):
+		if(Screen.foreground):
+			sys.stdout.write(fg_colo[Screen.foreground])
+		if(Screen.background):
+			sys.stdout.write(bg_colo[Screen.background])
+
 		sys.stdout.write("\x1B[1;1H")
 
 		for i in self.buf:
-			sys.stdout.write(Screen.bufColoF[i])
-			sys.stdout.write(Screen.bufColoB[i])
 			sys.stdout.write(Screen.bufChar[i])
-			sys.stdout.write("\x1b[0m")
-			# sys.stdout.write("\x1b[22m\x1b[24m\x1b[27m")
 
 def clip(x:int, y:int):
 	if x<0: x=0
@@ -82,16 +85,14 @@ def clip(x:int, y:int):
 	if y<0: y=0
 	if y>=Screen.height: y=Screen.height
 
-def draw(x:int, y:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+def draw(x:int, y:int, _char:str="\u2588"):
 	if (not isinstance(x, int)) or (not isinstance(y, int)):
 		raise ValueError("Coordinates should be integers")
 
 	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
 		Screen.bufChar[y * Screen.width + x] = _char
-		Screen.bufColoF[y * Screen.width + x] = _fg
-		Screen.bufColoB[y * Screen.width + x] = _bg
 
-def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
 	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
 		raise ValueError("Coordinates should be integers")
 	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
@@ -103,21 +104,19 @@ def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_colo["ma
 	while x<x2:
 		y = y1
 		while y<y2:
-			Draw(x, y, _char, _fg, _bg)
+			draw(x, y, _char)
 			y+=1
 		x+=1
 
-def draw_string(x:int, y:int, _str:str="", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+def draw_string(x:int, y:int, _string:str):
 	if (not isinstance(x, int)) or (not isinstance(y, int)):
 		raise ValueError("Coordinates should be integers")
 
 	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
-		for _char in _str:
-			Screen.bufChar[y * Screen.width + x] = _char
-			Screen.bufColoF[y * Screen.width + x] = _fg
-			Screen.bufColoB[y * Screen.width + x] = _bg
+		for i in range(len(_string)):
+			Screen.bufChar[y * Screen.width + x + i] = _string[i]
 
-def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
 	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
 		raise ValueError("Coordinates should be integers")
 	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
@@ -139,7 +138,7 @@ def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_col
 			y = y2
 			xe = x1
 
-		draw(x, y, _char, _fg, _bg)
+		draw(x, y, _char)
 		
 		while x<xe:
 			x = x + 1
@@ -151,7 +150,7 @@ def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_col
 				else:
 					y = y - 1
 				px = px + 2 * (dy1 - dx1)
-			draw(x, y, _char, _fg, _bg)
+			draw(x, y, _char)
 	else:
 		if (dy >= 0):
 			x = x1
@@ -162,7 +161,7 @@ def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_col
 			y = y2
 			ye = y1
 
-		draw(x, y, _char, _fg, _bg)
+		draw(x, y, _char)
 
 		while y<ye:
 			y = y + 1;
@@ -174,20 +173,21 @@ def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_col
 				else:
 					x = x - 1
 				py = py + 2 * (dx1 - dy1)
-			draw(x, y, _char, _fg, _bg)
+			draw(x, y, _char)
 
-def draw_triangle(x1:int, y1:int, x2:int, y2:int, x3:int, y3:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+def draw_triangle(x1:int, y1:int, x2:int, y2:int, x3:int, y3:int, _char:str="\u2588"):
 	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
 		raise ValueError("Coordinates should be integers")
 	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
 		raise ValueError("Coordinates should be integers")
 	if (not isinstance(x3, int)) or (not isinstance(y3, int)):
 		raise ValueError("Coordinates should be integers")
-	draw_line(x1, y1, x2, y2, _char, _fg, _bg)
-	draw_line(x2, y2, x3, y3, _char, _fg, _bg)
-	draw_line(x3, y3, x1, y1, _char, _fg, _bg)
 
-def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	draw_line(x1, y1, x2, y2, _char)
+	draw_line(x2, y2, x3, y3, _char)
+	draw_line(x3, y3, x1, y1, _char)
+
+def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588"):
 	if (not isinstance(xc, int)) or (not isinstance(yc, int)):
 		raise ValueError("Coordinates should be integers")
 	if (not isinstance(r, int)) or (not r):
@@ -198,14 +198,15 @@ def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588", _fg:str=fg_colo["mage
 	p = 3 - 2 * r
 
 	while y>=x:
-		draw(xc - x, yc - y, _char, _fg, _bg) # upper left left
-		draw(xc - y, yc - x, _char, _fg, _bg) # upper upper left
-		draw(xc + y, yc - x, _char, _fg, _bg) # upper upper right
-		draw(xc + x, yc - y, _char, _fg, _bg) # upper right right
-		draw(xc - x, yc + y, _char, _fg, _bg) # lower left left
-		draw(xc - y, yc + x, _char, _fg, _bg) # lower lower left
-		draw(xc + y, yc + x, _char, _fg, _bg) # lower lower right
-		draw(xc + x, yc + y, _char, _fg, _bg) # lower right right
+		draw(xc - x, yc - y, _char) # upper left left
+		draw(xc - y, yc - x, _char) # upper upper left
+		draw(xc + y, yc - x, _char) # upper upper right
+		draw(xc + x, yc - y, _char) # upper right right
+		draw(xc - x, yc + y, _char) # lower left left
+		draw(xc - y, yc + x, _char) # lower lower left
+		draw(xc + y, yc + x, _char) # lower lower right
+		draw(xc + x, yc + y, _char) # lower right right
+
 		if (p < 0):
 			p += 4 * x + 6;
 			x+=1
@@ -267,8 +268,10 @@ class Buttercup(ABC):
 		self.console_title = ""
 
 		if platform.system() == "Windows": os.system("")
+		# use alternate buffer
 		sys.stdout.write("\033[?1049h")
-		print(f"\x1B[?25l", end="")
+		# hide the text cursor
+		sys.stdout.write("\x1B[?25l")
 
 		self.ON_INIT()
 		viewport = Screen()
@@ -282,8 +285,11 @@ class Buttercup(ABC):
 
 			if (not self.game_state):
 				listener._stop = True
+				# reset color settings
 				sys.stdout.write("\033[0m")
+				# switch to main buffer
 				sys.stdout.write("\033[?1049l")
+				# soft reset settings
 				sys.stdout.write("\x1B[!p")
 				sys.stdout.write("\x1B[?25h")
 				sys.exit(0)
@@ -295,11 +301,16 @@ class Buttercup(ABC):
 				# sys.stdout.write("\x1B]30;{}{}\007".format(self.__class__.__name__ + " ", 1/self.deltaTime))
 				sys.stdout.write("\x1B]0;{}{}\x1B\x5C".format(self.__class__.__name__+" ", 1/self.deltaTime))
 			
+			Screen.bufChar = [" " for i in range(Screen.width * Screen.height)]
 			self.ON_UPDATE()
 			viewport.render()
 
 			self.deltaTime = time.perf_counter() - _f_st
 
+		# clear screen
 		sys.stdout.write("\033[2J")
+		# move text cursor to start of window
 		sys.stdout.write("\x1B[1;1H")
+		# make cursor visible
 		sys.stdout.write("\x1B[?25h")
+
