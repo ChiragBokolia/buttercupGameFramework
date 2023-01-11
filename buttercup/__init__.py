@@ -2,81 +2,223 @@ from abc import ABC, abstractmethod
 from threading import Thread
 import platform, sys, os, time
 
-class Cursor:
-	def shape(_shape:int = 0, _steady_state:bool = True) -> None:
-		"""
-		Customises the cursor shape and blinking state
-		0 - User Shape, 1 - Block, 3 - Underline, 5 - Bar
-		"""
-		if (_shape > 0):
-			print(f"\x1B[{_shape + _steady_state}\x20q", end="")
-		else:
-			print(f"\x1B[{_shape}\x20q", end="")
-		return None
+pixel_type = {
+	"solid":"\u2588",
+	"three_quarters":"\u2593",
+	"half":"\u2592",
+	"quarter":"\u2591"
+}
 
-	def blinking_mode(_blinking_state:bool = False) -> None:
-		"""
-		True enables cursor blinking, False disables cursor blinking
-		"""
-		if (_blinking_state):
-			print(f"\x1B[?12h", end="")
-		else:
-			print(f"\x1B[?12l", end="")
-		return None
+fg_colo = {
+	"black":"\x1b[30m",
+	"red":"\x1b[31m",
+	"green":"\x1b[32m",
+	"yellow":"\x1b[33m",
+	"blue":"\x1b[34m",
+	"magenta":"\x1b[35m",
+	"cyan":"\x1b[36m",
+	"white":"\x1b[37m",
+# bold/bright color
+	"b_black":"\x1b[90m",
+	"b_red":"\x1b[91m",
+	"b_green":"\x1b[92m",
+	"b_yellow":"\x1b[93m",
+	"b_blue":"\x1b[94m",
+	"b_magenta":"\x1b[95m",
+	"b_cyan":"\x1b[96m",
+	"b_white":"\x1b[97m"
+}
 
-	def show_mode(_show_state:bool = True) -> None:
-		"""
-		Sets cursor visibility
-		True shows cursor, False hides cursor
-		"""
-		if (_show_state):
-			print(f"\x1B[?25h", end="")
-		else:
-			print(f"\x1B[?25l", end="")
-		return None
+bg_colo = {
+	"black":"\x1b[40m",
+	"red":"\x1b[41m",
+	"green":"\x1b[42m",
+	"yellow":"\x1b[43m",
+	"blue":"\x1b[44m",
+	"magenta":"\x1b[45m",
+	"cyan":"\x1b[46m",
+	"white":"\x1b[47m",
+# bold/bright color
+	"b_black":"\x1b[100m",
+	"b_red":"\x1b[101m",
+	"b_green":"\x1b[102m",
+	"b_yellow":"\x1b[103m",
+	"b_blue":"\x1b[104m",
+	"b_magenta":"\x1b[105m",
+	"b_cyan":"\x1b[106m",
+	"b_white":"\x1b[107m"
+}
 
-	def move(_direction:int, _distance:int = 1) -> None:
-		"""
-		Move cursor by <n>
-		0 - up, 1 - down, 2 - forward (right), 3 - backward (left)
-		"""
-		_direction = chr(65 + _direction) # type: ignore
-		print(f"\x1B[{_distance}{_direction}", end="")
-		return None
-
-	def line(_direction:int, _distance:int = 1) -> None:
-		_direction = chr(69 + _direction) # type: ignore
-		print(f"\x1B[{_distance}{_direction}", end="")
-		return None
-
-	def horizontal_absolute(_column:int = 1) -> None:
-		print(f"\x1B[{_column}G", end="")
-		return None
-
-	def vertical_absolute(_line:int = 1) -> None:
-		print(f"\x1B[{_line}d", end="")
-		return None
-
-	def position_absolute(_line:int = 1, _column:int = 1) -> None:
-		print(f"\x1B[{_line};{_column}H", end="")
-		return None
-
-	def horizontal_vertical_absolute(_line:int = 1, _column:int = 1) -> None:
-		print(f"\x1B[{_line};{_column}f", end="")
-		return None
+keys = {
+	"ctrl+q": b"\x11",
+}
 
 class Screen:
 	width = 80
 	height = 24
 
+	bufChar = [" " for i in range(width * height)]
+	bufColoF = [" " for i in range(width * height)]
+	bufColoB = [" " for i in range(width * height)]
+
+	def __init__(self):
+		self.buf = [i for i in range(Screen.width*Screen.height)]
+		sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=Screen.height, cols=Screen.width))
+		# sys.stdout.write("\x1b[22m\x1b[24m\x1b[27m")
+
+	def render(self):
+		sys.stdout.write("\x1B[1;1H")
+
+		for i in self.buf:
+			sys.stdout.write(Screen.bufColoF[i])
+			sys.stdout.write(Screen.bufColoB[i])
+			sys.stdout.write(Screen.bufChar[i])
+			sys.stdout.write("\x1b[0m")
+			# sys.stdout.write("\x1b[22m\x1b[24m\x1b[27m")
+
+def clip(x:int, y:int):
+	if x<0: x=0
+	if x>=Screen.width: x=Screen.width
+	if y<0: y=0
+	if y>=Screen.height: y=Screen.height
+
+def draw(x:int, y:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(x, int)) or (not isinstance(y, int)):
+		raise ValueError("Coordinates should be integers")
+
+	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
+		Screen.bufChar[y * Screen.width + x] = _char
+		Screen.bufColoF[y * Screen.width + x] = _fg
+		Screen.bufColoB[y * Screen.width + x] = _bg
+
+def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+		raise ValueError("Coordinates should be integers")
+	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+		raise ValueError("Coordinates should be integers")
+
+	clip(x1, y1)
+	clip(x2, y2)
+	x = x1
+	while x<x2:
+		y = y1
+		while y<y2:
+			Draw(x, y, _char, _fg, _bg)
+			y+=1
+		x+=1
+
+def draw_string(x:int, y:int, _str:str="", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(x, int)) or (not isinstance(y, int)):
+		raise ValueError("Coordinates should be integers")
+
+	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
+		for _char in _str:
+			Screen.bufChar[y * Screen.width + x] = _char
+			Screen.bufColoF[y * Screen.width + x] = _fg
+			Screen.bufColoB[y * Screen.width + x] = _bg
+
+def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+		raise ValueError("Coordinates should be integers")
+	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+		raise ValueError("Coordinates should be integers")
+
+	dx = x2 - x1
+	dy = y2 - y1
+	dx1 = abs(dx)
+	dy1 = abs(dy)
+	px = 2 * dy1 - dx1
+	py = 2 * dx1 - dy1
+	if (dy1 <= dx1):
+		if (dx >= 0):
+			x = x1
+			y = y1
+			xe = x2
+		else:
+			x = x2
+			y = y2
+			xe = x1
+
+		draw(x, y, _char, _fg, _bg)
+		
+		while x<xe:
+			x = x + 1
+			if (px<0):
+				px = px + 2 * dy1
+			else:
+				if ((dx<0 and dy<0) or (dx>0 and dy>0)):
+					y = y + 1
+				else:
+					y = y - 1
+				px = px + 2 * (dy1 - dx1)
+			draw(x, y, _char, _fg, _bg)
+	else:
+		if (dy >= 0):
+			x = x1
+			y = y1
+			ye = y2
+		else:
+			x = x2
+			y = y2
+			ye = y1
+
+		draw(x, y, _char, _fg, _bg)
+
+		while y<ye:
+			y = y + 1;
+			if (py <= 0):
+				py = py + 2 * dx1
+			else:
+				if ((dx<0 and dy<0) or (dx>0 and dy>0)):
+					x = x + 1
+				else:
+					x = x - 1
+				py = py + 2 * (dx1 - dy1)
+			draw(x, y, _char, _fg, _bg)
+
+def draw_triangle(x1:int, y1:int, x2:int, y2:int, x3:int, y3:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+		raise ValueError("Coordinates should be integers")
+	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+		raise ValueError("Coordinates should be integers")
+	if (not isinstance(x3, int)) or (not isinstance(y3, int)):
+		raise ValueError("Coordinates should be integers")
+	draw_line(x1, y1, x2, y2, _char, _fg, _bg)
+	draw_line(x2, y2, x3, y3, _char, _fg, _bg)
+	draw_line(x3, y3, x1, y1, _char, _fg, _bg)
+
+def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588", _fg:str=fg_colo["magenta"], _bg:str=bg_colo["magenta"]):
+	if (not isinstance(xc, int)) or (not isinstance(yc, int)):
+		raise ValueError("Coordinates should be integers")
+	if (not isinstance(r, int)) or (not r):
+		raise ValueError("Radius should not be zero")
+
+	x = 0
+	y = r
+	p = 3 - 2 * r
+
+	while y>=x:
+		draw(xc - x, yc - y, _char, _fg, _bg) # upper left left
+		draw(xc - y, yc - x, _char, _fg, _bg) # upper upper left
+		draw(xc + y, yc - x, _char, _fg, _bg) # upper upper right
+		draw(xc + x, yc - y, _char, _fg, _bg) # upper right right
+		draw(xc - x, yc + y, _char, _fg, _bg) # lower left left
+		draw(xc - y, yc + x, _char, _fg, _bg) # lower lower left
+		draw(xc + y, yc + x, _char, _fg, _bg) # lower lower right
+		draw(xc + x, yc + y, _char, _fg, _bg) # lower right right
+		if (p < 0):
+			p += 4 * x + 6;
+			x+=1
+		else:
+			p += 4 * (x - y) + 10;
+			x+=1
+			y-=1
+
 class kEvent(Thread):
 	Thread.daemon = True
 
-	keys = {
-		'ctrl+q': b'\x11', 
-	}
-
 	press = None
+
 	t_kyDown = 0
 	t_kyUp = 0
 
@@ -101,13 +243,14 @@ class kEvent(Thread):
 			return _ch
 
 	def run(self):
-		while (not self._stop):
+		while not self._stop:
 				_in_buf = kEvent.key_event()
 				kEvent.t_kyDown = time.perf_counter_ns()
 				if kEvent.press != _in_buf:
 					kEvent.press = _in_buf
 				elif kEvent.press == _in_buf and kEvent.t_kyUp < 3_000_000:
 					kEvent.press = None
+		os._exit(0)
 
 class Buttercup(ABC):
 	if "utf-8" not in sys.stdout.encoding:
@@ -118,16 +261,18 @@ class Buttercup(ABC):
 	listener = kEvent()
 	listener.start()
 
+	deltaTime = 1
+
 	def __init__(self):
 		self.console_title = ""
 
 		if platform.system() == "Windows": os.system("")
-		sys.stdout.write("\033[?1049h\033[H")
+		sys.stdout.write("\033[?1049h")
+		print(f"\x1B[?25l", end="")
 
 		self.ON_INIT()
-		sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=Screen.height, cols=Screen.width))
+		viewport = Screen()
 
-		_f_dt = 1
 		while self.game_state:
 			_f_st = time.perf_counter()
 
@@ -137,19 +282,24 @@ class Buttercup(ABC):
 
 			if (not self.game_state):
 				listener._stop = True
+				sys.stdout.write("\033[0m")
 				sys.stdout.write("\033[?1049l")
 				sys.stdout.write("\x1B[!p")
 				sys.stdout.write("\x1B[?25h")
-				break
+				sys.exit(0)
 
 			if (self.console_title):
 				# sys.stdout.write("\x1B]30;{}\007".format(self.console_title))
 				sys.stdout.write("\x1B]0;{}\x1B\x5C".format(self.console_title))
 			else:
-				# sys.stdout.write("\x1B]30;{}{}\007".format(self.__class__.__name__ + " ", 1/_f_dt))
-				sys.stdout.write("\x1B]0;{}{}\x1B\x5C".format(self.__class__.__name__+" ", 1/_f_dt))
-
-			self.ON_UPDATE()
+				# sys.stdout.write("\x1B]30;{}{}\007".format(self.__class__.__name__ + " ", 1/self.deltaTime))
+				sys.stdout.write("\x1B]0;{}{}\x1B\x5C".format(self.__class__.__name__+" ", 1/self.deltaTime))
 			
-			_f_dt = time.perf_counter() - _f_st
+			self.ON_UPDATE()
+			viewport.render()
 
+			self.deltaTime = time.perf_counter() - _f_st
+
+		sys.stdout.write("\033[2J")
+		sys.stdout.write("\x1B[1;1H")
+		sys.stdout.write("\x1B[?25h")
