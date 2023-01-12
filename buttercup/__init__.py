@@ -64,9 +64,11 @@ class Screen:
 	bufChar = [" " for i in range(width * height)]
 
 	def __init__(self):
-		self.buf = [i for i in range(Screen.width*Screen.height)]
+		self.buf = (i for i in range(Screen.width*Screen.height))
 		# set terminal window width and height
 		sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=Screen.height, cols=Screen.width))
+		# clear the screen and restore default console colour
+		# sys.stdout.write("\033[2J\033[0m")
 
 	def render(self):
 		if(Screen.foreground):

@@ -10,8 +10,9 @@ Features:
 + [x] frame definition and smooth rendering
 + [x] basic drawing making capabilities
 
-+ [ ] sprite loading for ASCII art etc.
++ [ ] sprite loading (for ASCII art etc.)
 + [ ] player definition and control
++ [ ] builtin multiprocess handler (for strategy games and such)
 
 Usage
 ---
@@ -26,9 +27,10 @@ class Basic(Buttercup):
 		self.game_state = True
 
 	def ON_UPDATE(self):
-		if kEvent.press == kEvent.keys['ctrl+q']:
+		if kEvent.press == keys['ctrl+q']:
 			self.game_state = False
-		draw_string(10, 11, repr(kEvent.press))
+
+		draw_string(37, 11, repr(kEvent.press))
 
 Basic()
 ```
