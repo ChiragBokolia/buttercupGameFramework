@@ -64,11 +64,12 @@ class Screen:
 	bufChar = [" " for i in range(width * height)]
 
 	def __init__(self):
-		self.buf = (i for i in range(Screen.width*Screen.height))
+		# reset color settings
+		sys.stdout.write("\033[0m")
+
+		self.buf = [i for i in range(Screen.width*Screen.height)]
 		# set terminal window width and height
 		sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=Screen.height, cols=Screen.width))
-		# clear the screen and restore default console colour
-		# sys.stdout.write("\033[2J\033[0m")
 
 	def render(self):
 		if(Screen.foreground):
@@ -236,14 +237,8 @@ class kEvent(Thread):
 			return getch()
 		else:
 			import tty, termios
-			fd = sys.stdin.fileno()
-			old = termios.tcgetattr(fd)
-			try:
-				tty.setraw(fd)
-				_ch = bytes(sys.stdin.read(1), "ASCII")
-			finally:
-				termios.tcsetattr(fd, termios.TCSADRAIN, old)
-			return _ch
+			tty.setraw(sys.stdin.fileno())
+			return bytes(sys.stdin.read(1), "ASCII")
 
 	def run(self):
 		while not self._stop:
@@ -258,6 +253,11 @@ class kEvent(Thread):
 class Buttercup(ABC):
 	if "utf-8" not in sys.stdout.encoding:
 		raise Exception("UTF-8 incompatible terminal")
+
+	if platform.system() == 'Linux':
+		import termios
+		_fd = sys.stdin.fileno()
+		_term = termios.tcgetattr(_fd)
 
 	game_state = False
 
@@ -287,32 +287,27 @@ class Buttercup(ABC):
 
 			if (not self.game_state):
 				listener._stop = True
-				# reset color settings
-				sys.stdout.write("\033[0m")
-				# switch to main buffer
-				sys.stdout.write("\033[?1049l")
-				# soft reset settings
-				sys.stdout.write("\x1B[!p")
-				sys.stdout.write("\x1B[?25h")
 				sys.exit(0)
 
 			if (self.console_title):
-				# sys.stdout.write("\x1B]30;{}\007".format(self.console_title))
 				sys.stdout.write("\x1B]0;{}\x1B\x5C".format(self.console_title))
 			else:
-				# sys.stdout.write("\x1B]30;{}{}\007".format(self.__class__.__name__ + " ", 1/self.deltaTime))
 				sys.stdout.write("\x1B]0;{}{}\x1B\x5C".format(self.__class__.__name__+" ", 1/self.deltaTime))
-			
+
 			Screen.bufChar = [" " for i in range(Screen.width * Screen.height)]
 			self.ON_UPDATE()
 			viewport.render()
 
 			self.deltaTime = time.perf_counter() - _f_st
 
-		# clear screen
-		sys.stdout.write("\033[2J")
-		# move text cursor to start of window
-		sys.stdout.write("\x1B[1;1H")
-		# make cursor visible
-		sys.stdout.write("\x1B[?25h")
+		# reset color settings
+		sys.stdout.write("\033[0m")
+		# switch to main buffer
+		sys.stdout.write("\033[?1049l")
+		# soft reset
+		sys.stdout.write("\x1B[!p")
+
+		if platform.system() == 'Linux':
+			import termios
+			termios.tcsetattr(Buttercup._fd, termios.TCSADRAIN, Buttercup._term)
 

@@ -1,12 +1,12 @@
 Buttercup
 ===
 Uses virtual terminal sequences
-Aims to be simple, scalable and platform independent
+
+Aims to be simple and scalable
 
 Features:
 + [x] input buffer in form of a daemon thread
 + [x] game loop with initiation and update functions
-+ [x] basic cursor control
 + [x] frame definition and smooth rendering
 + [x] basic drawing making capabilities
 
