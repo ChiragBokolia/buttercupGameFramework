@@ -259,7 +259,7 @@ class kEvent(Thread):
 
 class Entity:
 	def __init__(self, _file):
-		f = open(_file, "r")
+		f = open(_file, "r", encoding="utf8")
 		self.width = 0
 		self.height = 0
 		self.res = []

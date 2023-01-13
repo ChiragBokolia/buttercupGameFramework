@@ -33,7 +33,7 @@ class Basic(Buttercup):
 		if kEvent.press == keys['ctrl+q']:
 			self.game_state = False
 
-		draw_string(37, 11, repr(kEvent.press))
+		Screen.draw_string(37, 11, repr(kEvent.press))
 
 Basic()
 ```
