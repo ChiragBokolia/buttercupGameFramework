@@ -4,13 +4,16 @@ Uses virtual terminal sequences
 
 Aims to be simple and scalable
 
+Clone, add on your code and install
+
 Features:
 + [x] input buffer in form of a daemon thread
 + [x] game loop with initiation and update functions
 + [x] frame definition and smooth rendering
 + [x] basic drawing making capabilities
++ [x] sprite loading (for ASCII art etc.)
 
-+ [ ] sprite loading (for ASCII art etc.)
++ [ ] animation support
 + [ ] player definition and control
 + [ ] builtin multiprocess handler (for strategy games and such)
 

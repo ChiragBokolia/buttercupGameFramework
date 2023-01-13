@@ -54,6 +54,12 @@ bg_colo = {
 	"b_white":"\x1b[107m"
 }
 
+def clip(x:int, y:int):
+	if x<0: x=0
+	if x>=Screen.width: x=Screen.width
+	if y<0: y=0
+	if y>=Screen.height: y=Screen.height
+
 class Screen:
 	width = 80
 	height = 24
@@ -82,141 +88,142 @@ class Screen:
 		for i in self.buf:
 			sys.stdout.write(Screen.bufChar[i])
 
-def clip(x:int, y:int):
-	if x<0: x=0
-	if x>=Screen.width: x=Screen.width
-	if y<0: y=0
-	if y>=Screen.height: y=Screen.height
 
-def draw(x:int, y:int, _char:str="\u2588"):
-	if (not isinstance(x, int)) or (not isinstance(y, int)):
-		raise ValueError("Coordinates should be integers")
+	@staticmethod
+	def draw(x:int, y:int, _char:str="\u2588"):
+		if (not isinstance(x, int)) or (not isinstance(y, int)):
+			raise ValueError("Coordinates should be integers")
 
-	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
-		Screen.bufChar[y * Screen.width + x] = _char
+		if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
+			Screen.bufChar[y * Screen.width + x] = _char
 
-def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
-	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
-		raise ValueError("Coordinates should be integers")
-	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
-		raise ValueError("Coordinates should be integers")
+	@staticmethod
+	def fill(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
+		if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+			raise ValueError("Coordinates should be integers")
+		if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+			raise ValueError("Coordinates should be integers")
 
-	clip(x1, y1)
-	clip(x2, y2)
-	x = x1
-	while x<x2:
-		y = y1
-		while y<y2:
-			draw(x, y, _char)
-			y+=1
-		x+=1
-
-def draw_string(x:int, y:int, _string:str):
-	if (not isinstance(x, int)) or (not isinstance(y, int)):
-		raise ValueError("Coordinates should be integers")
-
-	if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
-		for i in range(len(_string)):
-			Screen.bufChar[y * Screen.width + x + i] = _string[i]
-
-def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
-	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
-		raise ValueError("Coordinates should be integers")
-	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
-		raise ValueError("Coordinates should be integers")
-
-	dx = x2 - x1
-	dy = y2 - y1
-	dx1 = abs(dx)
-	dy1 = abs(dy)
-	px = 2 * dy1 - dx1
-	py = 2 * dx1 - dy1
-	if (dy1 <= dx1):
-		if (dx >= 0):
-			x = x1
+		clip(x1, y1)
+		clip(x2, y2)
+		x = x1
+		while x<x2:
 			y = y1
-			xe = x2
-		else:
-			x = x2
-			y = y2
-			xe = x1
-
-		draw(x, y, _char)
-		
-		while x<xe:
-			x = x + 1
-			if (px<0):
-				px = px + 2 * dy1
-			else:
-				if ((dx<0 and dy<0) or (dx>0 and dy>0)):
-					y = y + 1
-				else:
-					y = y - 1
-				px = px + 2 * (dy1 - dx1)
-			draw(x, y, _char)
-	else:
-		if (dy >= 0):
-			x = x1
-			y = y1
-			ye = y2
-		else:
-			x = x2
-			y = y2
-			ye = y1
-
-		draw(x, y, _char)
-
-		while y<ye:
-			y = y + 1;
-			if (py <= 0):
-				py = py + 2 * dx1
-			else:
-				if ((dx<0 and dy<0) or (dx>0 and dy>0)):
-					x = x + 1
-				else:
-					x = x - 1
-				py = py + 2 * (dx1 - dy1)
-			draw(x, y, _char)
-
-def draw_triangle(x1:int, y1:int, x2:int, y2:int, x3:int, y3:int, _char:str="\u2588"):
-	if (not isinstance(x1, int)) or (not isinstance(y1, int)):
-		raise ValueError("Coordinates should be integers")
-	if (not isinstance(x2, int)) or (not isinstance(y2, int)):
-		raise ValueError("Coordinates should be integers")
-	if (not isinstance(x3, int)) or (not isinstance(y3, int)):
-		raise ValueError("Coordinates should be integers")
-
-	draw_line(x1, y1, x2, y2, _char)
-	draw_line(x2, y2, x3, y3, _char)
-	draw_line(x3, y3, x1, y1, _char)
-
-def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588"):
-	if (not isinstance(xc, int)) or (not isinstance(yc, int)):
-		raise ValueError("Coordinates should be integers")
-	if (not isinstance(r, int)) or (not r):
-		raise ValueError("Radius should not be zero")
-
-	x = 0
-	y = r
-	p = 3 - 2 * r
-
-	while y>=x:
-		draw(xc - x, yc - y, _char) # upper left left
-		draw(xc - y, yc - x, _char) # upper upper left
-		draw(xc + y, yc - x, _char) # upper upper right
-		draw(xc + x, yc - y, _char) # upper right right
-		draw(xc - x, yc + y, _char) # lower left left
-		draw(xc - y, yc + x, _char) # lower lower left
-		draw(xc + y, yc + x, _char) # lower lower right
-		draw(xc + x, yc + y, _char) # lower right right
-
-		if (p < 0):
-			p += 4 * x + 6;
+			while y<y2:
+				Screen.draw(x, y, _char)
+				y+=1
 			x+=1
+
+	@staticmethod
+	def draw_string(x:int, y:int, _string:str):
+		if (not isinstance(x, int)) or (not isinstance(y, int)):
+			raise ValueError("Coordinates should be integers")
+
+		if (x >= 0 and x < Screen.width and y >= 0 and y < Screen.height):
+			for i in range(len(_string)):
+				Screen.bufChar[y * Screen.width + x + i] = _string[i]
+
+	@staticmethod
+	def draw_line(x1:int, y1:int, x2:int, y2:int, _char:str="\u2588"):
+		if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+			raise ValueError("Coordinates should be integers")
+		if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+			raise ValueError("Coordinates should be integers")
+
+		dx = x2 - x1
+		dy = y2 - y1
+		dx1 = abs(dx)
+		dy1 = abs(dy)
+		px = 2 * dy1 - dx1
+		py = 2 * dx1 - dy1
+		if (dy1 <= dx1):
+			if (dx >= 0):
+				x = x1
+				y = y1
+				xe = x2
+			else:
+				x = x2
+				y = y2
+				xe = x1
+
+			Screen.draw(x, y, _char)
+			
+			while x<xe:
+				x = x + 1
+				if (px<0):
+					px = px + 2 * dy1
+				else:
+					if ((dx<0 and dy<0) or (dx>0 and dy>0)):
+						y = y + 1
+					else:
+						y = y - 1
+					px = px + 2 * (dy1 - dx1)
+				Screen.draw(x, y, _char)
 		else:
-			p += 4 * (x - y) + 10;
-			x+=1
-			y-=1
+			if (dy >= 0):
+				x = x1
+				y = y1
+				ye = y2
+			else:
+				x = x2
+				y = y2
+				ye = y1
+
+			Screen.draw(x, y, _char)
+
+			while y<ye:
+				y = y + 1;
+				if (py <= 0):
+					py = py + 2 * dx1
+				else:
+					if ((dx<0 and dy<0) or (dx>0 and dy>0)):
+						x = x + 1
+					else:
+						x = x - 1
+					py = py + 2 * (dx1 - dy1)
+				Screen.draw(x, y, _char)
+
+	@staticmethod
+	def draw_triangle(x1:int, y1:int, x2:int, y2:int, x3:int, y3:int, _char:str="\u2588"):
+		if (not isinstance(x1, int)) or (not isinstance(y1, int)):
+			raise ValueError("Coordinates should be integers")
+		if (not isinstance(x2, int)) or (not isinstance(y2, int)):
+			raise ValueError("Coordinates should be integers")
+		if (not isinstance(x3, int)) or (not isinstance(y3, int)):
+			raise ValueError("Coordinates should be integers")
+
+		Screen.draw_line(x1, y1, x2, y2, _char)
+		Screen.draw_line(x2, y2, x3, y3, _char)
+		Screen.draw_line(x3, y3, x1, y1, _char)
+
+	@staticmethod
+	def draw_circle(xc:int, yc:int, r:int, _char:str="\u2588"):
+		if (not isinstance(xc, int)) or (not isinstance(yc, int)):
+			raise ValueError("Coordinates should be integers")
+		if (not isinstance(r, int)) or (not r):
+			raise ValueError("Radius should not be zero")
+
+		x = 0
+		y = r
+		p = 3 - 2 * r
+
+		while y>=x:
+			Screen.draw(xc - x, yc - y, _char) # upper left left
+			Screen.draw(xc - y, yc - x, _char) # upper upper left
+			Screen.draw(xc + y, yc - x, _char) # upper upper right
+			Screen.draw(xc + x, yc - y, _char) # upper right right
+			Screen.draw(xc - x, yc + y, _char) # lower left left
+			Screen.draw(xc - y, yc + x, _char) # lower lower left
+			Screen.draw(xc + y, yc + x, _char) # lower lower right
+			Screen.draw(xc + x, yc + y, _char) # lower right right
+
+			if (p < 0):
+				p += 4 * x + 6;
+				x+=1
+			else:
+				p += 4 * (x - y) + 10;
+				x+=1
+				y-=1
 
 class kEvent(Thread):
 	Thread.daemon = True
@@ -249,6 +256,31 @@ class kEvent(Thread):
 				elif kEvent.press == _in_buf and kEvent.t_kyUp < 3_000_000:
 					kEvent.press = None
 		os._exit(0)
+
+class Entity:
+	def __init__(self, _file):
+		f = open(_file, "r")
+		self.width = 0
+		self.height = 0
+		self.res = []
+		for _line in f:
+			_line = _line.replace('\n', '')
+			self.height+=1
+			if len(_line) > self.width:
+				self.width = len(_line)
+			self.res.append(_line)
+		f.close()
+		for i in range(len(self.res)):
+			if len(self.res[i]) < self.width:
+				self.res[i] += " " * (self.width - len(self.res[i]))
+	
+	def draw(self, x:int, y:int):
+		if (not isinstance(x, int)) or (not isinstance(y, int)):
+			raise ValueError("Coordinates should be integers")
+
+		for i in self.res:
+			Screen.draw_string(x, y, i)
+			y+=1
 
 class Buttercup(ABC):
 	if "utf-8" not in sys.stdout.encoding:
