@@ -281,6 +281,10 @@ class Entity:
 		for i in self.res:
 			Screen.draw_string(x, y, i)
 			y+=1
+	
+	def flip(self):
+		for i in range(self.height):
+			self.res[i] = self.res[i][::-1]
 
 class Buttercup(ABC):
 	if "utf-8" not in sys.stdout.encoding:
@@ -314,6 +318,7 @@ class Buttercup(ABC):
 			_f_st = time.perf_counter()
 
 			kEvent.t_kyUp = time.perf_counter_ns() - kEvent.t_kyDown
+
 			if kEvent.t_kyUp > 150_000_000:
 				kEvent.press = None
 
